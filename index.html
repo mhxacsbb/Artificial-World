@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Artificial World</title>
+
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+
+    <main id="app">
+
+        <header>
+            <h1>Artificial World</h1>
+            <p>Deterministic World Simulation Experiment</p>
+        </header>
+
+        <section id="world">
+            <p>World is waiting...</p>
+        </section>
+
+        <section id="controls">
+            <button id="startButton">Start</button>
+            <button id="stepButton">Step</button>
+            <button id="resetButton">Reset</button>
+        </section>
+
+        <section id="status">
+            <p>Tick: <span id="tick">0</span></p>
+        </section>
+
+        <section id="eventLog">
+            <h2>Event Log</h2>
+            <div id="events"></div>
+        </section>
+
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+
+</body>
+</html>

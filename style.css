@@ -1,0 +1,74 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #111;
+    color: #eee;
+    font-family: Arial, sans-serif;
+}
+
+#app {
+    width: min(1000px, 92vw);
+    margin: 40px auto;
+}
+
+header {
+    margin-bottom: 24px;
+}
+
+header h1 {
+    margin-bottom: 8px;
+}
+
+header p {
+    color: #999;
+}
+
+#world {
+    height: 500px;
+    border: 1px solid #444;
+    background: #181818;
+    position: relative;
+    overflow: hidden;
+}
+
+#controls {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+button {
+    padding: 8px 18px;
+    background: #222;
+    color: #eee;
+    border: 1px solid #555;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #333;
+}
+
+#status {
+    margin: 12px 0;
+}
+
+#eventLog {
+    border-top: 1px solid #333;
+    padding-top: 16px;
+}
+
+#events {
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.event {
+    padding: 3px 0;
+    color: #aaa;
+}
