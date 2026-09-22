@@ -1,22 +1,20 @@
 export class Entity {
-    constructor(id, type = "A") {
+    constructor(id, state = {}) {
         this.id = id;
-        this.type = type;
 
         this.state = {
-            energy: 10,
-            activity: 0,
-            memory: 0
+            size: state.size ?? 1,
+            stability: state.stability ?? 0.5
         };
     }
 
-    clone() {
-        const entity = new Entity(this.id, this.type);
-
-        entity.state = {
+    cloneState() {
+        return {
             ...this.state
         };
+    }
 
-        return entity;
+    clone(newId) {
+        return new Entity(newId, this.cloneState());
     }
 }

@@ -1,86 +1,212 @@
 export class Simulation {
-    constructor(world, rules = []) {
+    constructor(world, operations = {}) {
         this.world = world;
-        this.rules = rules;
+        this.operations = operations;
     }
 
-    step() {
-        this.world.tick++;
-        this.world.clearEvents();
 
-        // ----------------------------------------------------
-        // 1. 保存 Tick 开始时的世界状态
-        // ----------------------------------------------------
+    /*
+     * ============================================================
+     * 执行操作
+     * ============================================================
+     */
 
-        const snapshot = this.world.entities.map(entity => ({
-            id: entity.id,
-            type: entity.type,
-            state: {
-                ...entity.state
+    execute(
+        operationName,
+        entityIds,
+        parameters = {}
+    ) {
+        const operation =
+            this.operations[operationName];
+
+        if (!operation) {
+            throw new Error(
+                `Unknown operation: ${operationName}`
+            );
+        }
+
+
+        /*
+         * 获取输入实体。
+         */
+
+        const input =
+            entityIds.map(id => {
+                const entity =
+                    this.world.getEntity(id);
+
+                if (!entity) {
+                    throw new Error(
+                        `Entity ${id} does not exist.`
+                    );
+                }
+
+                return entity;
+            });
+
+
+        /*
+         * Operation 自己决定：
+         *
+         *     消耗什么
+         *     产生什么
+         *     修改什么
+         */
+
+        const result =
+            operation.execute(
+                this.world,
+                input,
+                parameters
+            );
+
+
+        /*
+         * 将操作结果应用到世界。
+         */
+
+        this.commit(result);
+
+
+        /*
+         * 记录历史。
+         */
+
+        this.world.recordHistory(
+            operationName,
+            {
+                input: entityIds,
+
+                parameters,
+
+                result:
+                    this.serializeResult(result)
             }
-        }));
+        );
 
-        // ----------------------------------------------------
-        // 2. 在快照上计算所有规则
-        //    此阶段不允许直接修改真实世界
-        // ----------------------------------------------------
 
-        const changes = [];
+        return result;
+    }
 
-        for (const entitySnapshot of snapshot) {
 
-            for (const rule of this.rules) {
+    /*
+     * ============================================================
+     * 提交世界变化
+     * ============================================================
+     *
+     * Simulation 不再理解 Copy / Create / Process
+     * 的具体规则。
+     *
+     * 它只处理统一的三种变化：
+     *
+     *     consume
+     *     output
+     *     update
+     */
 
-                if (!rule.condition(entitySnapshot, snapshot)) {
-                    continue;
-                }
+    commit(result) {
 
-                const change = rule.action(
-                    {
-                        id: entitySnapshot.id,
-                        type: entitySnapshot.type,
-                        state: {
-                            ...entitySnapshot.state
-                        }
-                    },
-                    snapshot
+        /*
+         * --------------------------------------------------------
+         * 1. 消耗实体
+         * --------------------------------------------------------
+         *
+         * 由 Operation 明确指定。
+         */
+
+        if (result.consume) {
+            for (
+                const entityId
+                of result.consume
+            ) {
+                this.world.removeEntity(
+                    entityId
                 );
-
-                if (change) {
-                    changes.push(change);
-                }
             }
         }
 
-        // ----------------------------------------------------
-        // 3. 统一提交所有状态变化
-        // ----------------------------------------------------
 
-        for (const change of changes) {
+        /*
+         * --------------------------------------------------------
+         * 2. 添加新实体
+         * --------------------------------------------------------
+         */
 
-            const entity = this.world.getEntity(change.entityId);
-
-            if (!entity) {
-                continue;
+        if (result.output) {
+            for (
+                const entity
+                of result.output
+            ) {
+                this.world.addEntity(
+                    entity
+                );
             }
+        }
 
-            if (change.state) {
+
+        /*
+         * --------------------------------------------------------
+         * 3. 更新已有实体
+         * --------------------------------------------------------
+         */
+
+        if (result.update) {
+            for (
+                const change
+                of result.update
+            ) {
+                const entity =
+                    this.world.getEntity(
+                        change.id
+                    );
+
+                if (!entity) {
+                    continue;
+                }
+
                 entity.state = {
                     ...entity.state,
                     ...change.state
                 };
             }
-
-            if (change.event) {
-                this.world.addEvent(change.event);
-            }
         }
-
-        return this.world.events;
     }
 
-    reset() {
-        this.world.reset();
-        this.world.initialize();
+
+    /*
+     * ============================================================
+     * 历史记录序列化
+     * ============================================================
+     */
+
+    serializeResult(result) {
+        return {
+            type: result.type,
+
+            consume:
+                result.consume ?? [],
+
+            output:
+                result.output?.map(
+                    entity => ({
+                        id: entity.id,
+                        state: {
+                            ...entity.state
+                        }
+                    })
+                ) ?? [],
+
+            update:
+                result.update ?? [],
+
+            weights:
+                result.weights,
+
+            noise:
+                result.noise,
+
+            result:
+                result.result
+        };
     }
 }

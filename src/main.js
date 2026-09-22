@@ -1,439 +1,739 @@
+
 import { World } from "./world.js";
+import {
+    CopyOperation,
+    CreateOperation
+} from "./creation.js";
+import { ProcessOperation } from "./process.js";
 import { Simulation } from "./simulation.js";
-import { Rule } from "./rule.js";
 
-console.log("Artificial World initialized.");
-
-
-// ============================================================
-// 1. 获取界面元素
-// ============================================================
-
-const startButton = document.getElementById("startButton");
-const stepButton = document.getElementById("stepButton");
-const run10Button = document.getElementById("run10Button");
-const resetButton = document.getElementById("resetButton");
-
-const tickElement = document.getElementById("tick");
-const eventsElement = document.getElementById("events");
-const worldElement = document.getElementById("world");
-
-
-// ============================================================
-// 2. 创建世界
-// ============================================================
 
 const world = new World();
 
+world.initialize(4);
 
-// ============================================================
-// 3. 定义世界规则
-// ============================================================
-
-// ------------------------------------------------------------
-// 规则 1：能量 → 活动
-// ------------------------------------------------------------
-
-const energyToActivity = new Rule(
-    "energy_to_activity",
-
-    (entity) => {
-        return entity.state.energy > 0;
-    },
-
-    (entity) => {
-        return {
-            entityId: entity.id,
-
-            state: {
-                energy: entity.state.energy - 1,
-                activity: entity.state.activity + 1
-            },
-
-            event: {
-                type: "state_change",
-                entityId: entity.id,
-                rule: "energy_to_activity",
-                description:
-                    `Entity ${entity.id}: energy → activity`
-            }
-        };
-    }
-);
-
-
-// ------------------------------------------------------------
-// 规则 2：活动 → 记忆
-// ------------------------------------------------------------
-
-const activityToMemory = new Rule(
-    "activity_to_memory",
-
-    (entity) => {
-        return entity.state.activity > 0;
-    },
-
-    (entity) => {
-        return {
-            entityId: entity.id,
-
-            state: {
-                activity: entity.state.activity - 1,
-                memory: entity.state.memory + 1
-            },
-
-            event: {
-                type: "state_change",
-                entityId: entity.id,
-                rule: "activity_to_memory",
-                description:
-                    `Entity ${entity.id}: activity → memory`
-            }
-        };
-    }
-);
-
-
-// ------------------------------------------------------------
-// 规则 3：记忆 → 能量
-// ------------------------------------------------------------
-
-const memoryToEnergy = new Rule(
-    "memory_to_energy",
-
-    (entity) => {
-        return entity.state.memory >= 3;
-    },
-
-    (entity) => {
-        return {
-            entityId: entity.id,
-
-            state: {
-                memory: entity.state.memory - 3,
-                energy: entity.state.energy + 2
-            },
-
-            event: {
-                type: "state_change",
-                entityId: entity.id,
-                rule: "memory_to_energy",
-                description:
-                    `Entity ${entity.id}: memory → energy`
-            }
-        };
-    }
-);
-
-
-// ============================================================
-// 4. 创建模拟器
-// ============================================================
 
 const simulation = new Simulation(
     world,
-    [
-        energyToActivity,
-        activityToMemory,
-        memoryToEnergy
-    ]
+    {
+        copy: new CopyOperation(),
+        create: new CreateOperation(),
+        process: new ProcessOperation()
+    }
 );
 
 
-// ============================================================
-// 5. 实验历史记录
-// ============================================================
+const entityList =
+    document.getElementById("entityList");
 
-let history = [];
+const log =
+    document.getElementById("log");
 
-
-// ============================================================
-// 6. 记录当前世界状态
-// ============================================================
-
-function recordHistory() {
-
-    const snapshot = {
-        tick: world.tick,
-
-        entities: world.entities.map(entity => ({
-            id: entity.id,
-            type: entity.type,
-            state: {
-                ...entity.state
-            }
-        })),
-
-        events: world.events.map(event => ({
-            type: event.type,
-            entityId: event.entityId,
-            rule: event.rule,
-            description: event.description
-        }))
-    };
-
-    history.push(snapshot);
-}
+const seedDisplay =
+    document.getElementById("seedDisplay");
 
 
-// ============================================================
-// 7. 更新界面
-// ============================================================
+/*
+ * ============================================================
+ * 基础世界显示
+ * ============================================================
+ */
 
 function render() {
 
-    tickElement.textContent = world.tick;
+    seedDisplay.textContent =
+        `Seed: ${world.seed}`;
 
-    // --------------------------------------------------------
-    // 世界显示
-    // --------------------------------------------------------
-
-    worldElement.innerHTML = "";
+    entityList.innerHTML = "";
 
     for (const entity of world.entities) {
 
-        const element = document.createElement("div");
+        const item =
+            document.createElement("div");
 
-        element.className = "entity";
+        item.className = "entity";
 
-        element.innerHTML = `
-            <strong>Entity ${entity.id}</strong>
-            <br>
-            Type: ${entity.type}
-            <br>
-            Energy: ${entity.state.energy}
-            <br>
-            Activity: ${entity.state.activity}
-            <br>
-            Memory: ${entity.state.memory}
+        item.innerHTML = `
+            <div>
+                <strong>Entity ${entity.id}</strong>
+            </div>
+
+            <div>
+                Size:
+                ${entity.state.size.toFixed(3)}
+            </div>
+
+            <div>
+                Stability:
+                ${entity.state.stability.toFixed(3)}
+            </div>
         `;
 
-        element.style.position = "absolute";
-        element.style.left = `${100 + entity.id * 180}px`;
-        element.style.top = "150px";
-
-        worldElement.appendChild(element);
-    }
-
-
-    // --------------------------------------------------------
-    // 事件显示
-    // --------------------------------------------------------
-
-    eventsElement.innerHTML = "";
-
-    for (const event of [...world.events].reverse()) {
-
-        const element = document.createElement("div");
-
-        element.className = "event";
-
-        element.textContent =
-            `Tick ${world.tick}: ${event.description}`;
-
-        eventsElement.appendChild(element);
+        entityList.appendChild(item);
     }
 }
 
 
-// ============================================================
-// 8. 单步运行
-// ============================================================
+/*
+ * ============================================================
+ * 日志
+ * ============================================================
+ */
 
-function step() {
+function writeLog(message) {
 
-    simulation.step();
+    const line =
+        document.createElement("div");
 
-    recordHistory();
+    line.textContent = message;
 
-    render();
-
-    console.log(
-        `Tick ${world.tick}`,
-        world.entities
-    );
+    log.prepend(line);
 }
 
 
-// ============================================================
-// 9. 重置世界
-// ============================================================
+/*
+ * ============================================================
+ * 获取当前勾选的实体
+ * ============================================================
+ */
 
-function reset() {
+function getSelectedEntities() {
 
-    simulation.reset();
+    const checkboxes =
+        document.querySelectorAll(
+            ".entity-select:checked"
+        );
 
-    history = [];
-
-    recordHistory();
-
-    render();
-
-    console.log("World reset.");
+    return Array.from(checkboxes)
+        .map(
+            checkbox =>
+                Number(checkbox.value)
+        );
 }
 
 
-// ============================================================
-// 10. 运行完整 10 Tick 实验
-// ============================================================
+/*
+ * ============================================================
+ * 为 Copy / Create 生成实体选择框
+ * ============================================================
+ */
 
-function run10Ticks() {
+function renderSelectableEntities() {
 
-    console.log("========================================");
-    console.log("Starting 10 Tick experiment");
-    console.log("========================================");
+    const operationPanel =
+        document.getElementById(
+            "operationEntities"
+        );
+
+    operationPanel.innerHTML = "";
+
+    for (const entity of world.entities) {
+
+        const label =
+            document.createElement("label");
+
+        label.innerHTML = `
+            <input
+                class="entity-select"
+                type="checkbox"
+                value="${entity.id}"
+            >
+            Entity ${entity.id}
+        `;
+
+        operationPanel.appendChild(label);
+    }
+}
 
 
-    // --------------------------------------------------------
-    // 每次实验从完全相同的初始状态开始
-    // --------------------------------------------------------
+/*
+ * ============================================================
+ * Process：生成加工对象列表
+ * ============================================================
+ */
 
-    simulation.reset();
+function renderProcessEntities() {
 
-    history = [];
+    const select =
+        document.getElementById(
+            "processEntity"
+        );
 
-    recordHistory();
+    const previousValue =
+        select.value;
 
+    select.innerHTML = `
+        <option value="">
+            请选择个体
+        </option>
+    `;
 
-    // --------------------------------------------------------
-    // 连续运行 10 Tick
-    // --------------------------------------------------------
+    for (const entity of world.entities) {
 
-    for (let i = 0; i < 10; i++) {
+        const option =
+            document.createElement("option");
 
-        simulation.step();
+        option.value =
+            entity.id;
 
-        recordHistory();
+        option.textContent =
+            `Entity ${entity.id}`;
+
+        select.appendChild(option);
     }
 
 
-    // --------------------------------------------------------
-    // 最后统一更新界面
-    // --------------------------------------------------------
+    /*
+     * 如果原来选择的实体仍然存在，
+     * 尽量保持原来的选择。
+     */
 
-    render();
+    const stillExists =
+        world.entities.some(
+            entity =>
+                String(entity.id) ===
+                previousValue
+        );
 
-
-    // --------------------------------------------------------
-    // 输出完整实验结果
-    // --------------------------------------------------------
-
-    console.log("10 Tick experiment finished.");
-
-    console.log(
-        "Simulation history:",
-        history
-    );
-
-
-    // --------------------------------------------------------
-    // 自动生成 JSON 日志
-    // --------------------------------------------------------
-
-    downloadLog();
+    if (stillExists) {
+        select.value =
+            previousValue;
+    }
 }
 
 
-// ============================================================
-// 11. 下载实验日志
-// ============================================================
+/*
+ * ============================================================
+ * Process：生成状态量列表
+ * ============================================================
+ *
+ * 状态量不是写死在 HTML 中。
+ *
+ * 页面读取当前实体的 state：
+ *
+ *     entity.state
+ *
+ * 有什么状态量，
+ * 加工菜单里就出现什么状态量。
+ */
 
-function downloadLog() {
+function renderProcessStates() {
 
-    const log = {
+    const entitySelect =
+        document.getElementById(
+            "processEntity"
+        );
 
-        experiment: {
-            name: "Artificial World - Echo Experiment",
-            version: "0.1",
-            totalTicks: 10
-        },
+    const stateSelect =
+        document.getElementById(
+            "processState"
+        );
 
-        rules: [
-            "energy_to_activity",
-            "activity_to_memory",
-            "memory_to_energy"
-        ],
+    const previousValue =
+        stateSelect.value;
 
-        history: history
+    stateSelect.innerHTML = `
+        <option value="">
+            请选择状态量
+        </option>
+    `;
+
+
+    const entityId =
+        Number(entitySelect.value);
+
+    if (!entityId) {
+        return;
+    }
+
+
+    const entity =
+        world.getEntity(entityId);
+
+    if (!entity) {
+        return;
+    }
+
+
+    /*
+     * 遍历当前个体的状态。
+     */
+
+    for (
+        const stateName
+        of Object.keys(entity.state)
+    ) {
+
+        const option =
+            document.createElement("option");
+
+        option.value =
+            stateName;
+
+        option.textContent =
+            getStateDisplayName(stateName);
+
+        stateSelect.appendChild(
+            option
+        );
+    }
+
+
+    /*
+     * 如果原来选择的状态量仍然存在，
+     * 保留选择。
+     */
+
+    const stateExists =
+        Object.prototype.hasOwnProperty.call(
+            entity.state,
+            previousValue
+        );
+
+    if (stateExists) {
+        stateSelect.value =
+            previousValue;
+    }
+}
+
+
+/*
+ * ============================================================
+ * 状态量显示名称
+ * ============================================================
+ */
+
+function getStateDisplayName(stateName) {
+
+    const names = {
+
+        size:
+            "Size（大小）",
+
+        stability:
+            "Stability（稳定性）"
     };
 
-
-    const json = JSON.stringify(
-        log,
-        null,
-        2
+    return (
+        names[stateName] ??
+        stateName
     );
+}
 
 
-    const blob = new Blob(
-        [json],
-        {
-            type: "application/json"
+/*
+ * ============================================================
+ * Process：根据加工方式更新参数默认值
+ * ============================================================
+ */
+
+function updateProcessValueDefault() {
+
+    const mode =
+        document.getElementById(
+            "processMode"
+        ).value;
+
+    const input =
+        document.getElementById(
+            "processValue"
+        );
+
+
+    if (mode === "multiply") {
+
+        /*
+         * 乘法默认值。
+         */
+
+        input.value = "0.5";
+
+    } else if (mode === "add") {
+
+        /*
+         * 加法默认值。
+         */
+
+        input.value = "0";
+    }
+}
+
+
+/*
+ * ============================================================
+ * Process：执行加工
+ * ============================================================
+ */
+
+function executeProcess() {
+
+    const entityId =
+        Number(
+            document.getElementById(
+                "processEntity"
+            ).value
+        );
+
+    const state =
+        document.getElementById(
+            "processState"
+        ).value;
+
+    const mode =
+        document.getElementById(
+            "processMode"
+        ).value;
+
+    const value =
+        Number(
+            document.getElementById(
+                "processValue"
+            ).value
+        );
+
+
+    /*
+     * 检查加工对象。
+     */
+
+    if (!entityId) {
+
+        writeLog(
+            "Process：请选择加工对象。"
+        );
+
+        return;
+    }
+
+
+    /*
+     * 检查状态量。
+     */
+
+    if (!state) {
+
+        writeLog(
+            "Process：请选择加工状态量。"
+        );
+
+        return;
+    }
+
+
+    /*
+     * 检查参数。
+     */
+
+    if (!Number.isFinite(value)) {
+
+        writeLog(
+            "Process：请输入有效的加工参数。"
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const result =
+            simulation.execute(
+                "process",
+                [entityId],
+                {
+                    state,
+                    mode,
+                    value
+                }
+            );
+
+
+        /*
+         * 获取加工结果。
+         */
+
+        const process =
+            result.process;
+
+
+        writeLog(
+            `Process：Entity ${entityId} `
+            + `${getStateDisplayName(state)} `
+            + `${mode === "multiply" ? "×" : "+"} `
+            + `${value}；`
+            + `${process.oldValue.toFixed(3)} `
+            + `→ `
+            + `${process.newValue.toFixed(3)}`
+        );
+
+
+        renderAll();
+
+
+        /*
+         * renderAll() 会重新生成列表，
+         * 因此重新恢复当前实体和状态量。
+         */
+
+        document.getElementById(
+            "processEntity"
+        ).value =
+            String(entityId);
+
+        renderProcessStates();
+
+        document.getElementById(
+            "processState"
+        ).value =
+            state;
+
+    } catch (error) {
+
+        writeLog(
+            `错误：${error.message}`
+        );
+    }
+}
+
+
+/*
+ * ============================================================
+ * 完整刷新
+ * ============================================================
+ */
+
+function renderAll() {
+
+    render();
+
+    renderSelectableEntities();
+
+    renderProcessEntities();
+
+    renderProcessStates();
+}
+
+
+/*
+ * ============================================================
+ * Copy
+ * ============================================================
+ */
+
+document
+    .getElementById("copyButton")
+    .addEventListener(
+        "click",
+        () => {
+
+            const selected =
+                getSelectedEntities();
+
+
+            if (selected.length !== 1) {
+
+                writeLog(
+                    "Copy：请选择且只能选择一个个体。"
+                );
+
+                return;
+            }
+
+
+            const count =
+                Number(
+                    document.getElementById(
+                        "copyCount"
+                    ).value
+                );
+
+
+            if (
+                !Number.isInteger(count) ||
+                count < 1
+            ) {
+
+                writeLog(
+                    "Copy：复制数量必须是大于等于 1 的整数。"
+                );
+
+                return;
+            }
+
+
+            try {
+
+                simulation.execute(
+                    "copy",
+                    selected,
+                    { count }
+                );
+
+
+                writeLog(
+                    `Copy：Entity ${selected[0]} `
+                    + `复制 ${count} 个。`
+                );
+
+
+                renderAll();
+
+            } catch (error) {
+
+                writeLog(
+                    `错误：${error.message}`
+                );
+            }
         }
     );
 
 
-    const url = URL.createObjectURL(blob);
+/*
+ * ============================================================
+ * Create
+ * ============================================================
+ */
 
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = "simulation-log.json";
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
-
-
-    console.log(
-        "Simulation log downloaded."
-    );
-}
-
-
-// ============================================================
-// 12. 按钮事件
-// ============================================================
-
-stepButton.addEventListener(
-    "click",
-    step
-);
-
-
-resetButton.addEventListener(
-    "click",
-    reset
-);
-
-
-startButton.addEventListener(
-    "click",
-    step
-);
-
-
-if (run10Button) {
-
-    run10Button.addEventListener(
+document
+    .getElementById("createButton")
+    .addEventListener(
         "click",
-        run10Ticks
+        () => {
+
+            const selected =
+                getSelectedEntities();
+
+
+            if (selected.length < 2) {
+
+                writeLog(
+                    "Create：至少选择两个个体。"
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const result =
+                    simulation.execute(
+                        "create",
+                        selected
+                    );
+
+
+                const weightText =
+                    result.weights
+                        .map(
+                            weight =>
+                                weight.toFixed(3)
+                        )
+                        .join(", ");
+
+
+                writeLog(
+                    `Create：输入 `
+                    + `[${selected.join(", ")}] `
+                    + `→ Entity `
+                    + `${result.output[0].id}；`
+                    + `权重 = [${weightText}]；`
+                    + `输入个体已消耗。`
+                );
+
+
+                renderAll();
+
+            } catch (error) {
+
+                writeLog(
+                    `错误：${error.message}`
+                );
+            }
+        }
     );
-}
 
 
-// ============================================================
-// 13. 初始化
-// ============================================================
+/*
+ * ============================================================
+ * Process
+ * ============================================================
+ */
 
-simulation.reset();
+document
+    .getElementById("processButton")
+    .addEventListener(
+        "click",
+        executeProcess
+    );
 
-history = [];
 
-recordHistory();
+/*
+ * 当加工对象改变时，
+ * 重新读取该实体拥有的状态量。
+ */
 
-render();
+document
+    .getElementById("processEntity")
+    .addEventListener(
+        "change",
+        renderProcessStates
+    );
+
+
+/*
+ * 当加工方式改变时，
+ * 更新参数默认值。
+ */
+
+document
+    .getElementById("processMode")
+    .addEventListener(
+        "change",
+        updateProcessValueDefault
+    );
+
+
+/*
+ * ============================================================
+ * Reset
+ * ============================================================
+ */
+
+document
+    .getElementById("resetButton")
+    .addEventListener(
+        "click",
+        () => {
+
+            world.reset();
+
+            world.initialize(4);
+
+            log.innerHTML = "";
+
+            writeLog(
+                "世界已重新随机生成。"
+            );
+
+            renderAll();
+        }
+    );
+
+
+/*
+ * ============================================================
+ * 初始化
+ * ============================================================
+ */
+
+renderAll();
+
+writeLog(
+    "Artificial World 第一版已启动。"
+);
+
+writeLog(
+    "基础个体由随机 Seed 生成。"
+);
+

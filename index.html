@@ -1,48 +1,147 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Artificial World</title>
 
-    <link rel="stylesheet" href="./style.css">
+    <link
+        rel="stylesheet"
+        href="./style.css"
+    >
 </head>
 
 <body>
 
-    <main id="app">
+    <main>
 
-        <header>
-            <h1>Artificial World</h1>
-            <p>Deterministic World Simulation Experiment</p>
-        </header>
+        <h1>Artificial World</h1>
 
-        <section id="world">
-            <p>World is waiting...</p>
+        <p class="subtitle">
+            第一版：状态世界
+        </p>
+
+        <div id="seedDisplay"></div>
+
+        <section>
+            <h2>世界中的个体</h2>
+
+            <div id="entityList"></div>
         </section>
 
-        <section id="controls">
-            <button id="startButton">开始</button>
-            <button id="stepButton">单步</button>
-            <button id="run10Button">运行 10 Tick</button>
-            <button id="resetButton">重置</button>
+        <section>
+
+            <h2>操作</h2>
+
+            <div
+                id="operationEntities"
+                class="selection"
+            ></div>
+
+            <div class="operation">
+
+                <label>
+                    Copy 数量：
+                    <input
+                        id="copyCount"
+                        type="number"
+                        min="1"
+                        value="1"
+                    >
+                </label>
+
+                <button id="copyButton">
+                    Copy
+                </button>
+
+                <button id="createButton">
+                    Create
+                </button>
+
+            </div>
+
+            <div class="operation process-operation">
+
+                <h3>Process</h3>
+
+                <label>
+                    加工对象：
+                    <select id="processEntity">
+                        <option value="">
+                            请选择个体
+                        </option>
+                    </select>
+                </label>
+
+                <label>
+                    加工状态量：
+                    <select id="processState">
+                        <option value="">
+                            请选择状态量
+                        </option>
+                    </select>
+                </label>
+
+                <label>
+                    加工方式：
+                    <select id="processMode">
+                        <option value="multiply">
+                            乘以
+                        </option>
+
+                        <option value="add">
+                            加上
+                        </option>
+                    </select>
+                </label>
+
+                <label>
+                    加工参数：
+                    <input
+                        id="processValue"
+                        type="number"
+                        step="0.1"
+                        value="0.5"
+                    >
+                </label>
+
+                <button id="processButton">
+                    执行 Process
+                </button>
+
+            </div>
+
+            <div class="operation">
+
+                <button id="resetButton">
+                    重新生成世界
+                </button>
+
+            </div>
+
         </section>
 
-        <section id="status">
-            <p>Tick: <span id="tick">0</span></p>
-        </section>
+        <section>
 
-        <section id="eventLog">
-            <h2>Event Log</h2>
-            <div id="events"></div>
+            <h2>运行记录</h2>
+
+            <div id="log"></div>
+
         </section>
 
     </main>
 
-    <script type="module" src="./src/main.js"></script>
+    <script
+        type="module"
+        src="./src/main.js"
+    ></script>
 
 </body>
-
 </html>
+
